@@ -27,8 +27,9 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @EnableSwagger2
 public class SoapRequestRestApplication {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		SpringApplication.run(SoapRequestRestApplication.class, args);
+
 	}
 
 	@PostMapping("/extract")
@@ -37,22 +38,28 @@ public class SoapRequestRestApplication {
 
 	}
 
-	public String extractXml(String request) throws Exception {
+	public static String extractXml(String request) throws Exception {
 		System.out.println(request);
 		XmlMapper mapper = new XmlMapper();
 		Map<String, Object> obj = mapper.readValue(request, Map.class);
-		return new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(obj.get("Body"));
+		ObjectMapper objectMapper = new ObjectMapper();
+		// JsonNode readTree = objectMapper.readTree(obj.get("Body"));
+
+		return obj.containsKey("Body") ? getBody(obj, objectMapper) : obj.toString();
 	}
-	
-	
-	 @Bean
-	  public Docket demoApi() {
-	    return new Docket(DocumentationType.SWAGGER_2)
-	        .protocols(new HashSet<>(Arrays.asList("http", "https")))
-	        .select()
-	        .apis(RequestHandlerSelectors.any())
-	        .paths(Predicates.not(PathSelectors.regex("/error.*")))
-	        .paths(Predicates.not(PathSelectors.regex("/actuator.*")))
-	        .build().apiInfo(ApiInfo.DEFAULT);
-	  }
+
+	private static String getBody(Map<String, Object> obj, ObjectMapper objectMapper) throws Exception {
+		Map<String, Object> data = (Map) obj.get("Body");
+		
+		String key = (String) data.keySet().toArray()[0];
+		
+		return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(data.get(key));
+	}
+
+	@Bean
+	public Docket demoApi() {
+		return new Docket(DocumentationType.SWAGGER_2).protocols(new HashSet<>(Arrays.asList("http", "https"))).select()
+				.apis(RequestHandlerSelectors.any()).paths(Predicates.not(PathSelectors.regex("/error.*")))
+				.paths(Predicates.not(PathSelectors.regex("/actuator.*"))).build().apiInfo(ApiInfo.DEFAULT);
+	}
 }
