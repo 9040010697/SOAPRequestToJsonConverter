@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.google.common.base.Predicates;
 
@@ -38,28 +39,30 @@ public class SoapRequestRestApplication {
 
 	}
 
+	@SuppressWarnings("unchecked")
 	public static String extractXml(String request) throws Exception {
 		System.out.println(request);
 		XmlMapper mapper = new XmlMapper();
 		Map<String, Object> obj = mapper.readValue(request, Map.class);
-		ObjectMapper objectMapper = new ObjectMapper();
-		// JsonNode readTree = objectMapper.readTree(obj.get("Body"));
-
-		return obj.containsKey("Body") ? getBody(obj, objectMapper) : obj.toString();
+		ObjectWriter writer = new ObjectMapper().writerWithDefaultPrettyPrinter();
+		return obj.containsKey("Body") ? getBody(obj, writer) : writer.writeValueAsString(obj);
 	}
 
-	private static String getBody(Map<String, Object> obj, ObjectMapper objectMapper) throws Exception {
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static String getBody(Map<String, Object> obj, ObjectWriter writer) throws Exception {
 		Map<String, Object> data = (Map) obj.get("Body");
-		
 		String key = (String) data.keySet().toArray()[0];
-		
-		return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(data.get(key));
+		return writer.writeValueAsString(data.get(key));
 	}
 
 	@Bean
 	public Docket demoApi() {
-		return new Docket(DocumentationType.SWAGGER_2).protocols(new HashSet<>(Arrays.asList("http", "https"))).select()
-				.apis(RequestHandlerSelectors.any()).paths(Predicates.not(PathSelectors.regex("/error.*")))
-				.paths(Predicates.not(PathSelectors.regex("/actuator.*"))).build().apiInfo(ApiInfo.DEFAULT);
+		return new Docket(DocumentationType.SWAGGER_2)
+				.protocols(new HashSet<>(Arrays.asList("http", "https")))
+				.select()
+				.apis(RequestHandlerSelectors.any())
+				.paths(Predicates.not(PathSelectors.regex("/error.*")))
+				.paths(Predicates.not(PathSelectors.regex("/actuator.*")))
+				.build().apiInfo(ApiInfo.DEFAULT);
 	}
 }
